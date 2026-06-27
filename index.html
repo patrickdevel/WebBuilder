@@ -83,6 +83,14 @@
             <div class="group inspector" id="inspector" style="display: none;">
                 <h2>⚙️ Element-Inspector <span class="kbd-hint" id="elTagLabel" style="margin-left:auto; text-transform:none; letter-spacing:0;"></span></h2>
 
+                <label>Link (URL oder Seite):</label>
+                <div style="display:flex; gap: 4px; align-items: center;">
+                    <input type="text" id="inspectLink" placeholder="z.B. https://... oder ziel.html" onchange="applyLink(this.value)">
+                    <select id="inspectPageLink" class="tool-btn small" style="width: auto; padding: 8px;" onchange="document.getElementById('inspectLink').value = this.value; applyLink(this.value);">
+                        <option value="">Seiten...</option>
+                    </select>
+                </div>
+
                 <label>Ausrichtung:</label>
                 <div class="align-row">
                     <button data-align="left" onclick="setAlign('left')">⯇</button>
