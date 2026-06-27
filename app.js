@@ -948,8 +948,9 @@ function openConfirmModal(title, text, onConfirm) {
         overlayEl.style.display = 'flex';
         inputEl.style.display = 'none';
         btnEl.onclick = () => {
+            const cb = modalConfirmCallback;
             closeModal();
-            if (modalConfirmCallback) modalConfirmCallback();
+            if (cb) cb();
         };
     } else {
         // Fallback, falls modale IDs im HTML-Dokument fehlen
@@ -977,8 +978,9 @@ function openPromptModal(title, label, defaultValue, onSubmit) {
         setTimeout(() => inputEl.focus(), 50);
         btnEl.onclick = () => {
             const val = inputEl.value;
+            const cb = modalPromptCallback;
             closeModal();
-            if (modalPromptCallback) modalPromptCallback(val);
+            if (cb) cb(val);
         };
     } else {
         // Fallback auf nativen Browser-Prompt
