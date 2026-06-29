@@ -22,33 +22,30 @@
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
             margin: 0;
             display: flex;
-            flex-direction: column;
+            justify-content: center;
             align-items: center;
             min-height: 100vh;
-            padding: 40px 20px;
+            padding: 20px;
         }
 
         .overview-container {
-            max-width: 600px;
+            max-width: 500px;
             width: 100%;
             text-align: center;
         }
 
         .logo-large {
-            width: 100px;
-            height: 100px;
+            width: 80px;
+            height: 80px;
             margin-bottom: 20px;
-            filter: drop-shadow(0 0 10px rgba(59, 130, 246, 0.2));
         }
-
-        h1 { font-size: 2.5rem; margin-bottom: 10px; }
 
         .info-card {
             background: var(--bg-sidebar);
             border: 1px solid var(--border);
             padding: 30px;
             border-radius: var(--radius);
-            margin: 40px 0;
+            margin-bottom: 20px;
         }
 
         .primary-btn {
@@ -64,20 +61,14 @@
             margin-top: 20px;
         }
 
-        .primary-btn:hover { opacity: 0.9; }
-
-        footer {
-            margin-top: auto;
-            padding-top: 50px;
-        }
-
         .footer-link {
             color: var(--text-faint);
             text-decoration: none;
-            display: flex;
+            display: inline-flex;
             align-items: center;
             gap: 8px;
             font-size: 0.9rem;
+            transition: color 0.2s;
         }
 
         .footer-link:hover { color: var(--accent); }
@@ -88,23 +79,21 @@
     <div class="overview-container">
         <img src="logo.png" alt="Drafty Logo" class="logo-large">
         <h1>Willkommen bei Drafty</h1>
-        <p style="color: var(--text-dim);">Erstelle und verwalte deine Projekte direkt im Browser.</p>
+        <p style="color: var(--text-dim); margin-bottom: 30px;">Dein No-Code Web-Builder.</p>
 
         <div class="info-card">
-            <h3>Wie starte ich ein Projekt?</h3>
-            <p style="color: var(--text-dim);">Klicke unten, um den Editor zu öffnen. Dort kannst du neue Seiten anlegen und mit dem Drag-and-Drop-System dein Layout designen.</p>
+            <h3>Erste Schritte</h3>
+            <p style="color: var(--text-dim);">Klicke auf den Button, um ein neues Projekt im Editor zu starten.</p>
             <a href="index.html" class="primary-btn">Editor öffnen</a>
         </div>
-    </div>
 
-    <footer>
         <a href="https://github.com/patrickdevel" target="_blank" class="footer-link">
             <svg height="18" width="18" viewBox="0 0 16 16" fill="currentColor">
                 <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/>
             </svg>
             &copy; 2026 - patrickdevel
         </a>
-    </footer>
+    </div>
 
 </body>
 </html>
