@@ -813,6 +813,37 @@
         .style-darkmode .web-newsletter { background: #1e293b; border-color: #334155; }
         .style-darkmode .web-modal-block .modal-panel { background: #1e293b; color: #f8fafc; }
 
+
+        /* ===== V3.1: Multi-Select / Gruppierung / Sperren / Verstecken / Kontextmenü ===== */
+        #canvas .multi-selected { outline: 2px dashed #f59e0b !important; outline-offset: 2px; background-color: rgba(245, 158, 11, 0.08); }
+        #canvas .web-group { outline: 1px dashed #94a3b8; outline-offset: 4px; }
+        #canvas .el-locked { position: relative; cursor: not-allowed; }
+        #canvas .el-locked::after { content: "🔒"; position: absolute; top: 2px; right: 2px; font-size: 0.75rem; background: #fff; border-radius: 50%; padding: 1px 3px; box-shadow: 0 1px 4px rgba(0,0,0,0.25); pointer-events: none; }
+        #canvas .web-hidden { opacity: 0.35; outline: 1px dashed #f59e0b; }
+        #canvas .web-hidden::before { content: "🙈 versteckt (nur im Editor sichtbar)"; position: absolute; font-size: 0.65rem; background: #f59e0b; color: #1e1b0f; padding: 1px 6px; border-radius: 4px; transform: translateY(-100%); pointer-events: none; }
+
+        .multiselect-toolbar {
+            position: fixed; bottom: 22px; left: 50%; transform: translateX(-50%); z-index: 1400;
+            background: var(--bg-panel); border: 1px solid var(--accent); border-radius: 10px;
+            padding: 8px 10px; display: flex; align-items: center; gap: 6px; box-shadow: 0 10px 30px rgba(0,0,0,0.35);
+        }
+        .multiselect-toolbar .ms-count { font-size: 0.75rem; color: var(--text-dim); padding: 0 6px; }
+        .multiselect-toolbar button { background: var(--bg-input); border: 1px solid var(--border); color: var(--text-main); padding: 6px 10px; border-radius: 6px; font-size: 0.75rem; cursor: pointer; }
+        .multiselect-toolbar button:hover { border-color: var(--accent); }
+        .multiselect-toolbar button.del-btn:hover { background: var(--danger); border-color: var(--danger); color: #fff; }
+
+        .context-menu {
+            position: fixed; z-index: 1500; background: var(--bg-panel); border: 1px solid var(--border);
+            border-radius: 8px; padding: 6px; min-width: 200px; box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+            display: flex; flex-direction: column; gap: 2px;
+        }
+        .context-menu button { background: transparent; border: none; color: var(--text-main); text-align: left; padding: 8px 10px; border-radius: 5px; font-size: 0.8rem; cursor: pointer; display: flex; justify-content: space-between; gap: 10px; }
+        .context-menu button:hover { background: var(--accent-soft); }
+        .context-menu button.del-btn { color: var(--danger); }
+        .context-menu button.del-btn:hover { background: rgba(244,63,94,0.12); }
+        .context-menu button span { color: var(--text-faint); font-size: 0.68rem; }
+        .context-menu .ctx-sep { height: 1px; background: var(--border); margin: 4px 2px; }
+
         .badge-count { position: absolute; top: -4px; right: -4px; background: var(--danger); color: #fff; font-size: 0.6rem; font-weight: 700; min-width: 14px; height: 14px; border-radius: 7px; display: flex; align-items: center; justify-content: center; padding: 0 3px; }
     </style>
 </head>
@@ -1489,8 +1520,13 @@
 
             // preventDefault: verhindert, dass <a>-Links (z.B. der Button-Baustein) im Editor
             // tatsächlich navigieren, wenn man draufklickt — wir wollen das Element nur auswählen.
-            el.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); selectElement(el); });
-            el.addEventListener('contextmenu', (e) => { e.preventDefault(); e.stopPropagation(); confirmDeleteElement(el); });
+            el.addEventListener('click', (e) => {
+                e.preventDefault(); e.stopPropagation();
+                if (el.classList.contains('el-locked')) { selectElement(el); return; }
+                if (e.shiftKey) { toggleMultiSelect(el); }
+                else { selectElement(el); }
+            });
+            el.addEventListener('contextmenu', (e) => { e.preventDefault(); e.stopPropagation(); openContextMenu(el, e.clientX, e.clientY); });
 
             el.addEventListener('dragstart', (e) => {
                 if (draggedSidebarItem) return; // Prevent conflicts
@@ -1621,6 +1657,7 @@
            ====================================================================== */
         function selectElement(el) {
             if (!el) return;
+            clearMultiSelect();
             if (selectedElement) {
                 selectedElement.classList.remove('selected-element');
                 removeElementToolbar();
@@ -1726,6 +1763,7 @@
         }
 
         function deselectElement() {
+            if (typeof clearMultiSelect === 'function') clearMultiSelect();
             if (selectedElement) {
                 selectedElement.classList.remove('selected-element');
                 removeElementToolbar();
@@ -1765,6 +1803,8 @@
                 <button title="Nach oben" aria-label="Element nach oben verschieben" data-act="up">↑</button>
                 <button title="Nach unten" aria-label="Element nach unten verschieben" data-act="down">↓</button>
                 <button title="Duplizieren (Strg+D)" aria-label="Element duplizieren" data-act="dup">⧉</button>
+                <button title="Sperren" aria-label="Element sperren" data-act="lock">🔒</button>
+                <button title="Verstecken" aria-label="Element verstecken" data-act="hide">🙈</button>
                 <button title="Kommentar" aria-label="Kommentar hinzufügen oder bearbeiten" data-act="comment">💬</button>
                 <button title="Löschen" aria-label="Element löschen" class="del-btn" data-act="del">✕</button>
             `;
@@ -1775,6 +1815,8 @@
                 if (act === 'up') moveElement(el, -1);
                 if (act === 'down') moveElement(el, 1);
                 if (act === 'dup') duplicateElement(el);
+                if (act === 'lock') toggleLockElement(el);
+                if (act === 'hide') toggleHideElement(el);
                 if (act === 'del') confirmDeleteElement(el);
                 if (act === 'comment') addOrEditComment(el);
                 positionElementToolbar(); // Position/Größe kann sich durch die Aktion geändert haben
@@ -1860,6 +1902,188 @@
                 if (selectedElement === el) deselectElement();
                 el.remove(); updateCanvasEmptyState(); markDirty(); pushHistory();
             });
+        }
+
+        /* ======================================================================
+           V3.1: MULTI-SELECT, GRUPPIERUNG, SPERREN, VERSTECKEN, KONTEXTMENÜ
+           ====================================================================== */
+        let multiSelectedElements = [];
+
+        function toggleMultiSelect(el) {
+            removeElementToolbar();
+            if (selectedElement) { selectedElement.classList.remove('selected-element'); selectedElement = null; }
+            const idx = multiSelectedElements.indexOf(el);
+            if (idx > -1) {
+                multiSelectedElements.splice(idx, 1);
+                el.classList.remove('multi-selected');
+            } else {
+                multiSelectedElements.push(el);
+                el.classList.add('multi-selected');
+            }
+            if (multiSelectedElements.length === 1) {
+                // Nur noch ein Element übrig -> normale Einzelauswahl
+                const single = multiSelectedElements[0];
+                clearMultiSelect();
+                selectElement(single);
+                return;
+            }
+            document.getElementById('inspector').style.display = 'none';
+            showMultiSelectToolbar();
+        }
+
+        function clearMultiSelect() {
+            multiSelectedElements.forEach(el => el.classList.remove('multi-selected'));
+            multiSelectedElements = [];
+            document.getElementById('multiSelectToolbar')?.remove();
+        }
+
+        function showMultiSelectToolbar() {
+            document.getElementById('multiSelectToolbar')?.remove();
+            const bar = document.createElement('div');
+            bar.id = 'multiSelectToolbar';
+            bar.className = 'multiselect-toolbar';
+            bar.innerHTML = `
+                <span class="ms-count">${multiSelectedElements.length} ausgewählt</span>
+                <button data-act="group" title="Gruppieren">📦 Gruppieren</button>
+                <button data-act="lock" title="Sperren">🔒 Sperren</button>
+                <button data-act="hide" title="Verstecken">🙈 Verstecken</button>
+                <button data-act="dup" title="Duplizieren">⧉ Duplizieren</button>
+                <button data-act="del" class="del-btn" title="Löschen">✕ Löschen</button>
+            `;
+            bar.addEventListener('click', (e) => {
+                const act = e.target.closest('button')?.dataset.act;
+                if (!act) return;
+                if (act === 'group') groupSelectedElements();
+                if (act === 'lock') multiSelectedElements.slice().forEach(lockElement);
+                if (act === 'hide') multiSelectedElements.slice().forEach(hideElement);
+                if (act === 'dup') { const els = multiSelectedElements.slice(); clearMultiSelect(); els.forEach(duplicateElement); }
+                if (act === 'del') {
+                    openConfirmModal('Löschen?', `${multiSelectedElements.length} Elemente wirklich entfernen?`, () => {
+                        multiSelectedElements.forEach(el => el.remove());
+                        clearMultiSelect(); updateCanvasEmptyState(); markDirty(); pushHistory();
+                    });
+                }
+            });
+            document.body.appendChild(bar);
+        }
+
+        function groupSelectedElements() {
+            if (multiSelectedElements.length < 2) return;
+            // In Dokumentreihenfolge sortieren, damit die Gruppe an der richtigen Stelle entsteht
+            const els = multiSelectedElements.slice().sort((a, b) => {
+                const pos = a.compareDocumentPosition(b);
+                return (pos & Node.DOCUMENT_POSITION_FOLLOWING) ? -1 : 1;
+            });
+            const parent = els[0].parentElement;
+            if (!parent) return;
+            const group = document.createElement('div');
+            group.className = 'web-group';
+            group.setAttribute('draggable', 'true');
+            parent.insertBefore(group, els[0]);
+            els.forEach(el => { el.classList.remove('multi-selected'); group.appendChild(el); });
+            clearMultiSelect();
+            attachElementEvents(group);
+            markDirty(); pushHistory();
+            selectElement(group);
+            showToast('Gruppiert', 'success');
+        }
+
+        function ungroupElement(el) {
+            if (!el || !el.classList.contains('web-group')) return;
+            const parent = el.parentElement;
+            if (!parent) return;
+            const children = Array.from(el.children);
+            children.forEach(child => parent.insertBefore(child, el));
+            el.remove();
+            deselectElement();
+            markDirty(); pushHistory();
+            showToast('Gruppierung aufgehoben', 'success');
+        }
+
+        function lockElement(el) {
+            if (!el) return;
+            el.classList.add('el-locked');
+            el.setAttribute('draggable', 'false');
+            el.querySelectorAll('[contenteditable="true"]').forEach(c => c.contentEditable = 'false');
+            if (el.isContentEditable) el.contentEditable = 'false';
+            markDirty(); pushHistory();
+        }
+        function unlockElement(el) {
+            if (!el) return;
+            el.classList.remove('el-locked');
+            el.setAttribute('draggable', 'true');
+            el.querySelectorAll('[data-was-editable="1"]').forEach(c => { c.contentEditable = 'true'; });
+            markDirty(); pushHistory();
+        }
+        function toggleLockElement(el) {
+            if (!el) return;
+            if (el.classList.contains('el-locked')) unlockElement(el); else lockElement(el);
+            if (selectedElement === el) selectElement(el);
+        }
+
+        function hideElement(el) {
+            if (!el) return;
+            el.classList.add('web-hidden');
+            if (selectedElement === el) deselectElement();
+            markDirty(); pushHistory();
+        }
+        function unhideElement(el) {
+            if (!el) return;
+            el.classList.remove('web-hidden');
+            markDirty(); pushHistory();
+        }
+        function toggleHideElement(el) {
+            if (!el) return;
+            if (el.classList.contains('web-hidden')) unhideElement(el); else hideElement(el);
+        }
+
+        /* ---- Rechtsklick-Kontextmenü ---- */
+        function closeContextMenu() { document.getElementById('elContextMenu')?.remove(); }
+
+        function openContextMenu(el, x, y) {
+            closeContextMenu();
+            if (!multiSelectedElements.includes(el)) {
+                clearMultiSelect();
+                selectElement(el);
+            }
+            const isGroup = el.classList.contains('web-group');
+            const isLocked = el.classList.contains('el-locked');
+            const isHidden = el.classList.contains('web-hidden');
+            const menu = document.createElement('div');
+            menu.id = 'elContextMenu';
+            menu.className = 'context-menu';
+            menu.innerHTML = `
+                <button data-act="dup">⧉ Duplizieren <span>Strg+D</span></button>
+                ${isGroup ? '<button data-act="ungroup">📦 Gruppierung aufheben</button>' : ''}
+                <button data-act="lock">${isLocked ? '🔓 Entsperren' : '🔒 Sperren'}</button>
+                <button data-act="hide">${isHidden ? '👁️ Einblenden' : '🙈 Verstecken'}</button>
+                <button data-act="up">↑ Nach oben</button>
+                <button data-act="down">↓ Nach unten</button>
+                <div class="ctx-sep"></div>
+                <button data-act="del" class="del-btn">✕ Löschen</button>
+            `;
+            menu.style.left = x + 'px';
+            menu.style.top = y + 'px';
+            menu.addEventListener('click', (e) => {
+                const act = e.target.closest('button')?.dataset.act;
+                if (!act) return;
+                if (act === 'dup') duplicateElement(el);
+                if (act === 'ungroup') ungroupElement(el);
+                if (act === 'lock') toggleLockElement(el);
+                if (act === 'hide') toggleHideElement(el);
+                if (act === 'up') moveElement(el, -1);
+                if (act === 'down') moveElement(el, 1);
+                if (act === 'del') confirmDeleteElement(el);
+                closeContextMenu();
+            });
+            document.body.appendChild(menu);
+            // Innerhalb des Sichtbereichs halten
+            const rect = menu.getBoundingClientRect();
+            if (rect.right > window.innerWidth) menu.style.left = (window.innerWidth - rect.width - 8) + 'px';
+            if (rect.bottom > window.innerHeight) menu.style.top = (window.innerHeight - rect.height - 8) + 'px';
+            setTimeout(() => {
+                document.addEventListener('click', closeContextMenu, { once: true });
+            }, 0);
         }
 
         /* ======================================================================
@@ -2353,8 +2577,14 @@ pricing: `<div class="web-pricing" draggable="true">
                 if (mod && e.key.toLowerCase()==='z' && !e.shiftKey) { e.preventDefault(); undo(); }
                 if (mod && ((e.key.toLowerCase()==='y') || (e.key.toLowerCase()==='z' && e.shiftKey))) { e.preventDefault(); redo(); }
                 if (mod && e.key.toLowerCase()==='s') { e.preventDefault(); saveProjectToFile(); }
-                if (!isText && (e.key==='Delete' || e.key==='Backspace') && selectedElement && !isFormField) { e.preventDefault(); confirmDeleteElement(selectedElement); }
-                if (!isText && mod && e.key.toLowerCase()==='d' && selectedElement) { e.preventDefault(); duplicateElement(selectedElement); }
+                if (!isText && (e.key==='Delete' || e.key==='Backspace') && !isFormField) {
+                    if (multiSelectedElements.length) { e.preventDefault(); document.getElementById('multiSelectToolbar')?.querySelector('[data-act="del"]')?.click(); }
+                    else if (selectedElement) { e.preventDefault(); confirmDeleteElement(selectedElement); }
+                }
+                if (!isText && mod && e.key.toLowerCase()==='d') {
+                    if (multiSelectedElements.length) { e.preventDefault(); const els = multiSelectedElements.slice(); clearMultiSelect(); els.forEach(duplicateElement); }
+                    else if (selectedElement) { e.preventDefault(); duplicateElement(selectedElement); }
+                }
 
                 // Navigation mit Pfeiltasten zwischen Geschwister-Elementen im Canvas
                 if (!isText && !isFormField && selectedElement && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) {
@@ -2749,6 +2979,8 @@ pricing: `<div class="web-pricing" draggable="true">
         .style-darkmode .web-authform, .style-darkmode .web-chartblock, .style-darkmode .web-socialfeed .sf-post { background: #1e293b; border-color: #334155; color: #f8fafc; }
         .style-darkmode .web-newsletter { background: #1e293b; border-color: #334155; }
         .style-darkmode .web-modal-block .modal-panel { background: #1e293b; color: #f8fafc; }
+.web-hidden { display: none !important; }
+.web-group { display: block; }
 `;
 
         function buildExportHtml(pageName, data, htmlCode, useExternalCss = false) {
